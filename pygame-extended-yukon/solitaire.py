@@ -291,7 +291,6 @@ while running:
 
                     if result[0] == "foundation":
                         f_idx = result[1]
-                        save_state()
                         dragging = True
                         origin_col = ("foundation", f_idx)
 
@@ -304,12 +303,11 @@ while running:
 
                     elif result[0] is not None:
                         col_idx, card_idx = result
-                        save_state()
                         dragging = True
                         origin_col = col_idx
 
                         drag_crds = tabelau[col_idx][card_idx:]
-                        tabelau[col_idx] = tabelau[col_idx][:card_idx]
+                        origin_col=col_idx
 
                         card = drag_crds[0]
                         drag_offset_x = event.pos[0] - card.x
@@ -331,19 +329,34 @@ while running:
                         rect=pygame.Rect(target_x, target_y, crdW, crdH)
                         if rect.collidepoint(mx, my):
                             if can_move_to_tabelau(drag_crds[0], col):
-                                new_col=col+drag_crds
-                                tabelau[col_idx]=new_col
-                                layout_column(new_col, col_idx)
-                                placed=True
+                                save_state()
+                                if isinstance(origin_col, tuple):  # 來自 foundation
+                                    foundations[origin_col[1]].pop()
+                                else:
+                                    tabelau[origin_col] = tabelau[origin_col][:len(tabelau[origin_col]) - len(drag_crds)]
+
+                                # ⭐ 再放到新位置
+                                tabelau[col_idx] += drag_crds
+
+                                # ⭐ 重新排版
+                                layout_column(tabelau[col_idx], col_idx)
+
+                                placed = True
                                 break
                     if not placed and len(drag_crds)==1:
                         for i, (fx, fy) in enumerate(foundation_pos):
                             rect=pygame.Rect(fx, fy, crdW, crdH)
                             if rect.collidepoint(mx, my):
                                 if can_move_to_foundation(drag_crds[0], foundations[i]):
+                                    save_state()
+                                    if isinstance(origin_col, tuple):
+                                        foundations[origin_col[1]].pop()
+                                    else:
+                                        tabelau[origin_col] = tabelau[origin_col][:len(tabelau[origin_col]) - len(drag_crds)]
+                                    
                                     card=drag_crds[0]
-
                                     card.x, card.y=fx, fy
+                                    
                                     foundations[i].append(card)
                                     placed=True
                                     break
