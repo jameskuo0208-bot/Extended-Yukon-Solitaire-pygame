@@ -75,6 +75,7 @@ class Card:
             gsf.blit(cardIMG[suits.index(self.suit)][self.value-1], (self.x, self.y))
 
 history=[]
+move_committed=False
 
 
 
@@ -281,7 +282,7 @@ while running:
                         continue
                     if paused: continue
 
-                    if len(history):
+                    if len(history) and not dragging:
                         if undoBTN.collidepoint(event.pos):
                             undo()
                     result = get_card_at_pos(event.pos)
@@ -291,6 +292,8 @@ while running:
 
                     if result[0] == "foundation":
                         f_idx = result[1]
+                        save_state()
+                        move_committed=False
                         dragging = True
                         origin_col = ("foundation", f_idx)
 
@@ -303,11 +306,13 @@ while running:
 
                     elif result[0] is not None:
                         col_idx, card_idx = result
+                        save_state()
+                        move_committed=False
                         dragging = True
                         origin_col = col_idx
 
                         drag_crds = tabelau[col_idx][card_idx:]
-                        origin_col=col_idx
+                        tabelau[col_idx] = tabelau[col_idx][:card_idx]
 
                         card = drag_crds[0]
                         drag_offset_x = event.pos[0] - card.x
@@ -317,7 +322,7 @@ while running:
                 if dragging:
                     mx, my=event.pos
                     placed=False
-
+                    move_committed=False
                     for col_idx in range(len(tabelau)):
                         col=tabelau[col_idx]
                         if not len(col):
@@ -329,38 +334,26 @@ while running:
                         rect=pygame.Rect(target_x, target_y, crdW, crdH)
                         if rect.collidepoint(mx, my):
                             if can_move_to_tabelau(drag_crds[0], col):
-                                save_state()
-                                if isinstance(origin_col, tuple):  # 來自 foundation
-                                    foundations[origin_col[1]].pop()
-                                else:
-                                    tabelau[origin_col] = tabelau[origin_col][:len(tabelau[origin_col]) - len(drag_crds)]
-
-                                # ⭐ 再放到新位置
-                                tabelau[col_idx] += drag_crds
-
-                                # ⭐ 重新排版
-                                layout_column(tabelau[col_idx], col_idx)
-
-                                placed = True
+                                move_committed=True
+                                new_col=col+drag_crds
+                                tabelau[col_idx]=new_col
+                                layout_column(new_col, col_idx)
+                                placed=True
                                 break
                     if not placed and len(drag_crds)==1:
                         for i, (fx, fy) in enumerate(foundation_pos):
                             rect=pygame.Rect(fx, fy, crdW, crdH)
                             if rect.collidepoint(mx, my):
                                 if can_move_to_foundation(drag_crds[0], foundations[i]):
-                                    save_state()
-                                    if isinstance(origin_col, tuple):
-                                        foundations[origin_col[1]].pop()
-                                    else:
-                                        tabelau[origin_col] = tabelau[origin_col][:len(tabelau[origin_col]) - len(drag_crds)]
-                                    
+                                    move_committed=True
                                     card=drag_crds[0]
+
                                     card.x, card.y=fx, fy
-                                    
                                     foundations[i].append(card)
                                     placed=True
                                     break
                     if not placed:
+                        if not move_committed and len(history): history.pop()
                         if isinstance(origin_col, tuple):  # 來自 foundation
                             f_idx = origin_col[1]
                             foundations[f_idx].append(drag_crds[0])
@@ -412,6 +405,7 @@ while running:
                             paused=False
                             dragging=False
                             drag_crds=[]
+                            history=[]
                         case pygame.K_n:
                             confirming_ng=False
 
@@ -435,6 +429,7 @@ while running:
                             confirming_ng=False
                             dragging=False
                             drag_crds=[]
+                            history=[]
     if not game_started: 
         gamesurface.blit(bg_surface, (0, 0))
         gamesurface.blit(titleIMG, (screenW/2-titleW/2, screenH/2-titleH/2-btnH))
@@ -454,7 +449,7 @@ while running:
 
         for card in drag_crds:
             card.draw(gamesurface)
-        if len(history):
+        if len(history)>=2 or (len(history)==1 and move_committed):
             gamesurface.blit(undoIMG, (0, 0))
         if confirming:
             gamesurface.blit(message_sf, (0, 0))
@@ -501,9 +496,6 @@ while running:
             gamesurface.blit(win_txt, (screenW/2-winW/2, screenH/2-(winH+mh1+mh2)/2))
             gamesurface.blit(msg_txt1, (screenW/2-mw1/2, screenH/2-(winH+mh1+mh2)/2+winH))
             gamesurface.blit(msg_txt2, (screenW/2-mw2/2, screenH/2-(winH+mh1+mh2)/2+winH+mh1))
-
-
-            
     screen.blit(gamesurface, (0, 0))
     pygame.display.flip()
     clock.tick(60)
