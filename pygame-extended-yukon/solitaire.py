@@ -207,6 +207,8 @@ def layout_column(col, col_idx):
         c.x = x_start + dx * col_idx
         c.y = y_start + i * spacing
 
+actions=0
+
 def undo():
     global tabelau, foundations
 
@@ -285,6 +287,7 @@ while running:
                     if len(history) and not dragging:
                         if undoBTN.collidepoint(event.pos):
                             undo()
+                            actions-=1
                     result = get_card_at_pos(event.pos)
 
                     col_idx = None
@@ -338,6 +341,7 @@ while running:
                                 new_col=col+drag_crds
                                 tabelau[col_idx]=new_col
                                 layout_column(new_col, col_idx)
+                                actions+=1
                                 placed=True
                                 break
                     if not placed and len(drag_crds)==1:
@@ -347,7 +351,7 @@ while running:
                                 if can_move_to_foundation(drag_crds[0], foundations[i]):
                                     move_committed=True
                                     card=drag_crds[0]
-
+                                    actions+=1
                                     card.x, card.y=fx, fy
                                     foundations[i].append(card)
                                     placed=True
@@ -449,7 +453,7 @@ while running:
 
         for card in drag_crds:
             card.draw(gamesurface)
-        if len(history)>=2 or (len(history)==1 and move_committed):
+        if actions>0:
             gamesurface.blit(undoIMG, (0, 0))
         if confirming:
             gamesurface.blit(message_sf, (0, 0))
