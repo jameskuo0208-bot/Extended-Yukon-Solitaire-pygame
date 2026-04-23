@@ -259,7 +259,7 @@ while running:
                     elif quitBTN.collidepoint(event.pos):
                         running=False
                 else:
-                    if rtnBTN.collidepoint(event.pos):
+                    if rtnBTN.collidepoint(event.pos) and not win:
                         confirming=True
                     elif confirming:
                         confirming=False
@@ -268,7 +268,7 @@ while running:
                     if confirming:
                         continue
 
-                    if ngBTN.collidepoint(event.pos):
+                    if ngBTN.collidepoint(event.pos) and not win:
                         confirming_ng=True
                     elif confirming_ng:
                         confirming_ng=False
@@ -277,7 +277,7 @@ while running:
                     if confirming_ng:
                         continue
 
-                    if pauseBTN.collidepoint(event.pos):
+                    if pauseBTN.collidepoint(event.pos) and not win:
                         paused=True
                     elif paused:
                         paused=False
@@ -341,7 +341,8 @@ while running:
                                 new_col=col+drag_crds
                                 tabelau[col_idx]=new_col
                                 layout_column(new_col, col_idx)
-                                actions+=1
+                                if origin_col!=col_idx: actions+=1
+                                else: history.pop()
                                 placed=True
                                 break
                     if not placed and len(drag_crds)==1:
@@ -358,7 +359,7 @@ while running:
                                     break
                     if not placed:
                         if not move_committed and len(history): history.pop()
-                        if isinstance(origin_col, tuple):  # 來自 foundation
+                        if isinstance(origin_col, tuple): # 來自 foundation
                             f_idx = origin_col[1]
                             foundations[f_idx].append(drag_crds[0])
                             drag_crds[0].x, drag_crds[0].y = foundation_pos[f_idx]
@@ -388,6 +389,7 @@ while running:
                             confirming_ng=False
                             paused=False
                             history=[]
+                            actions=0
                         case pygame.K_n:
                             confirming=False
                 if confirming_ng:
@@ -410,6 +412,7 @@ while running:
                             dragging=False
                             drag_crds=[]
                             history=[]
+                            actions=0
                         case pygame.K_n:
                             confirming_ng=False
 
@@ -434,6 +437,7 @@ while running:
                             dragging=False
                             drag_crds=[]
                             history=[]
+                            actions=0
     if not game_started: 
         gamesurface.blit(bg_surface, (0, 0))
         gamesurface.blit(titleIMG, (screenW/2-titleW/2, screenH/2-titleH/2-btnH))
