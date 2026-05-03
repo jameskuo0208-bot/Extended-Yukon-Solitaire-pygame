@@ -39,11 +39,11 @@ undoBTN=pygame.Rect(0, 0, rtnW, rtnH)
 
 ngIMG=pygame.image.load("assets/newgame_button.png").convert_alpha()
 ngIMG=pygame.transform.smoothscale_by(ngIMG, rtn_scale)
-ngBTN=pygame.Rect(0, screenH-rtnH, rtnW, rtnH)
+ngBTN=pygame.Rect((screenW-rtnW)//3, 0, rtnW, rtnH)
 
 pauseIMG=pygame.image.load("assets/pause_button.png").convert_alpha()
 pauseIMG=pygame.transform.smoothscale_by(pauseIMG, rtn_scale)
-pauseBTN=pygame.Rect(screenW-rtnW, screenH-rtnH, rtnW, rtnH)
+pauseBTN=pygame.Rect(2*(screenW-rtnW)//3, 0, rtnW, rtnH)
 
 bg_surface=pygame.Surface((screenW, screenH))
 
@@ -259,7 +259,7 @@ while running:
                     elif quitBTN.collidepoint(event.pos):
                         running=False
                 else:
-                    if rtnBTN.collidepoint(event.pos) and not win:
+                    if rtnBTN.collidepoint(event.pos) and not win and not paused:
                         confirming=True
                     elif confirming:
                         confirming=False
@@ -268,7 +268,7 @@ while running:
                     if confirming:
                         continue
 
-                    if ngBTN.collidepoint(event.pos) and not win:
+                    if ngBTN.collidepoint(event.pos) and not win and not paused:
                         confirming_ng=True
                     elif confirming_ng:
                         confirming_ng=False
@@ -277,7 +277,7 @@ while running:
                     if confirming_ng:
                         continue
 
-                    if pauseBTN.collidepoint(event.pos) and not win:
+                    if pauseBTN.collidepoint(event.pos) and not win and not paused:
                         paused=True
                     elif paused:
                         paused=False
@@ -446,8 +446,8 @@ while running:
     else:
         gamesurface.blit(bg_surface, (0, 0))
         gamesurface.blit(rtnIMG, (screenW-rtnW, 0))
-        gamesurface.blit(ngIMG, (0, screenH-rtnH))
-        gamesurface.blit(pauseIMG, (screenW-rtnW, screenH-rtnH))
+        gamesurface.blit(ngIMG, ((screenW-rtnW)//3, 0))
+        gamesurface.blit(pauseIMG, (2*(screenW-rtnW)//3, 0))
         draw_foundations()
         draw_empty()
         for col_idx, col in enumerate(tabelau):
