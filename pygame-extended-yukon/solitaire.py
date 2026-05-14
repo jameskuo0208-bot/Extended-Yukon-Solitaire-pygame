@@ -12,6 +12,7 @@ pygame.display.set_caption("Extended Yukon Solitaire")
 
 font=pygame.font.SysFont("Arial", 60)
 ctrl_font=pygame.font.SysFont("Arial", 40)
+timer_font=pygame.font.SysFont("Arial", 20)
 
 bgIMG=pygame.image.load("assets/background.png").convert_alpha()
 bgW, bgH=bgIMG.get_size()
@@ -224,6 +225,15 @@ def undo():
             for c in f:
                 c.x, c.y = foundation_pos[i]
 
+def format_timer(tm):
+    hours=int(tm//3600)
+    minutes=int((tm%3600)//60)
+    seconds=tm%60
+    
+    if hours>0: return f"{hours}h {minutes}m {seconds:05.2f}s"
+    elif minutes>0: return f"{minutes}m {seconds:05.2f}s"
+    else: return f"{seconds:05.2f}s"
+
 def check_win(fdt:list):
     for f in fdt:
         if len(f)!=16: return False
@@ -238,6 +248,9 @@ drag_crds=[]
 drag_offset_x = 0
 drag_offset_y = 0
 origin_col = None
+moves=0
+timer=0
+start_timing=False
 
 win=False
 
@@ -288,6 +301,7 @@ while running:
                         if undoBTN.collidepoint(event.pos):
                             undo()
                             actions-=1
+                            moves+=1
                     result = get_card_at_pos(event.pos)
 
                     col_idx = None
@@ -296,6 +310,7 @@ while running:
                     if result[0] == "foundation":
                         f_idx = result[1]
                         save_state()
+                        if not start_timing: start_timing=True
                         move_committed=False
                         dragging = True
                         origin_col = ("foundation", f_idx)
@@ -310,6 +325,7 @@ while running:
                     elif result[0] is not None:
                         col_idx, card_idx = result
                         save_state()
+                        if not start_timing: start_timing=True
                         move_committed=False
                         dragging = True
                         origin_col = col_idx
@@ -341,7 +357,9 @@ while running:
                                 new_col=col+drag_crds
                                 tabelau[col_idx]=new_col
                                 layout_column(new_col, col_idx)
-                                if origin_col!=col_idx: actions+=1
+                                if origin_col!=col_idx: 
+                                    actions+=1
+                                    moves+=1
                                 else: history.pop()
                                 placed=True
                                 break
@@ -353,6 +371,7 @@ while running:
                                     move_committed=True
                                     card=drag_crds[0]
                                     actions+=1
+                                    moves+=1
                                     card.x, card.y=fx, fy
                                     foundations[i].append(card)
                                     placed=True
@@ -390,6 +409,9 @@ while running:
                             paused=False
                             history=[]
                             actions=0
+                            moves=0
+                            timer=0
+                            start_timing=False
                         case pygame.K_n:
                             confirming=False
                 if confirming_ng:
@@ -413,6 +435,9 @@ while running:
                             drag_crds=[]
                             history=[]
                             actions=0
+                            moves=0
+                            timer=0
+                            start_timing=False
                         case pygame.K_n:
                             confirming_ng=False
 
@@ -438,6 +463,9 @@ while running:
                             drag_crds=[]
                             history=[]
                             actions=0
+                            moves=0
+                            timer=0
+                            start_timing=False
     if not game_started: 
         gamesurface.blit(bg_surface, (0, 0))
         gamesurface.blit(titleIMG, (screenW/2-titleW/2, screenH/2-titleH/2-btnH))
@@ -445,9 +473,18 @@ while running:
         gamesurface.blit(quitIMG, (screenW/2+200, screenH/2))
     else:
         gamesurface.blit(bg_surface, (0, 0))
-        gamesurface.blit(rtnIMG, (screenW-rtnW, 0))
-        gamesurface.blit(ngIMG, ((screenW-rtnW)//3, 0))
-        gamesurface.blit(pauseIMG, (2*(screenW-rtnW)//3, 0))
+        if start_timing: timer+=dt
+        if not confirming_ng and not confirming and not paused and not win:
+            gamesurface.blit(rtnIMG, (screenW-rtnW, 0))
+            gamesurface.blit(ngIMG, ((screenW-rtnW)//3, 0))
+            gamesurface.blit(pauseIMG, (2*(screenW-rtnW)//3, 0))
+            timer_txt=timer_font.render(f"Elapsed Time: {format_timer(timer)}", True, (128, 128, 128))
+            moves_txt=timer_font.render(f"Moves: {moves}", True, (128, 128, 128))
+            timerW, timerH=timer_txt.get_size()
+            moveW, moveH=moves_txt.get_size()
+            gamesurface.blit(timer_txt, (screenW-timerW, screenH-timerH))
+            gamesurface.blit(moves_txt, (screenW-moveW, screenH-timerH-moveH))
+
         draw_foundations()
         draw_empty()
         for col_idx, col in enumerate(tabelau):
@@ -457,7 +494,7 @@ while running:
 
         for card in drag_crds:
             card.draw(gamesurface)
-        if actions>0:
+        if actions>0 and not confirming_ng and not confirming and not paused and not win:
             gamesurface.blit(undoIMG, (0, 0))
         if confirming:
             gamesurface.blit(message_sf, (0, 0))
@@ -481,6 +518,7 @@ while running:
             gamesurface.blit(ctrl_txt, (screenW/2-ctrW/2, screenH/2-(cfmH+ctrH)/2+cfmH))
         if paused:
             gamesurface.blit(message_sf, (0, 0))
+            start_timing=False
             pause_txt=font.render("GAME PAUSED", True, (255, 255, 255))
             pause_rct=pause_txt.get_rect()
             pauseW, pauseH=pause_rct.size
@@ -490,22 +528,27 @@ while running:
             gamesurface.blit(pause_txt, (screenW/2-pauseW/2,  screenH/2-(pauseH+msgH)/2))
             gamesurface.blit(msg_txt, (screenW/2-msgW/2, screenH/2-(pauseH+msgH)/2+pauseH))
         if check_win(foundations):
+            start_timing=False
             win=True
             gamesurface.blit(message_sf, (0, 0))
             win_txt=font.render("YOU WON!", True, (255, 255, 255))
             win_rct=win_txt.get_rect()
             winW, winH=win_rct.size
+            time_txt=ctrl_font.render(f"Your time: {format_timer(timer)}", True, (255, 255, 255))
             msg_txt1=ctrl_font.render("Press R to replay", True, (255, 255, 255))
             msg_txt2=ctrl_font.render("Press X to quit", True, (255, 255, 255))
+            time_rct=time_txt.get_rect()
             msg1_rct=msg_txt1.get_rect()
             msg2_rct=msg_txt2.get_rect()
+            tmw, tmh=time_txt.get_rect()
             mw1, mh1=msg1_rct.size
             mw2, mh2=msg2_rct.size
-            gamesurface.blit(win_txt, (screenW/2-winW/2, screenH/2-(winH+mh1+mh2)/2))
-            gamesurface.blit(msg_txt1, (screenW/2-mw1/2, screenH/2-(winH+mh1+mh2)/2+winH))
-            gamesurface.blit(msg_txt2, (screenW/2-mw2/2, screenH/2-(winH+mh1+mh2)/2+winH+mh1))
+            gamesurface.blit(win_txt, (screenW/2-winW/2, screenH/2-(winH+mh1+mh2+tmw)/2))
+            gamesurface.blit(time_txt, (screenW/2-time_rct/2, screenH/2-(winH+mh1+mh2+tmw)/2+winH))
+            gamesurface.blit(msg_txt1, (screenW/2-mw1/2, screenH/2-(winH+mh1+mh2+tmw)/2+winH+tmh))
+            gamesurface.blit(msg_txt2, (screenW/2-mw2/2, screenH/2-(winH+mh1+mh2+tmw)/2+winH+tmh+mh1))
     screen.blit(gamesurface, (0, 0))
     pygame.display.flip()
-    clock.tick(60)
+    dt=clock.tick(60)/1000
 
 pygame.quit()
